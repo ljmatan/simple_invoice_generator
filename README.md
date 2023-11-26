@@ -120,10 +120,10 @@ As can be seen below, this Flutter project is separated into three main sections
 
 ---
 
-- Dart
-- Flutter
+- Dart, Flutter SDK
 - [shared_preferences](https://pub.dev/packages/shared_preferences)
 - [pdf](https://pub.dev/packages/pdf)
+- [zxing_lib](https://pub.dev/packages/zxing_lib)
 
 ## 5. **Contributing**
 
