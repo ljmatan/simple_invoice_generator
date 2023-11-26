@@ -1,7 +1,8 @@
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart';
 import 'package:simple_invoice_generator/models/model_invoice_item.dart';
@@ -33,18 +34,33 @@ class IgServicePdfGenerator {
   /// Generates the PDF file with the given parameters, and stores it to the device.
   ///
   static Future<void> generatePdfInvoice({
+    required String paymentId,
     required List<IgModelInvoiceItem> invoiceItems,
     required IgModelSaleClient clientInfo,
+    required String paymentModel,
+    required String paymentMethod,
   }) async {
     final pdf = Document();
+    Font? pdfFont;
+    try {
+      final fontData = await rootBundle.load('assets/fonts/TimesNewRoman-Regular.ttf');
+      pdfFont = Font.ttf(fontData);
+    } catch (e) {
+      debugPrint('IgServicePdfGenerator.generatePdfInvoice error: $e');
+    }
     pdf.addPage(
       MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const EdgeInsets.fromLTRB(16, 18, 16, 12),
+        theme: ThemeData.withFont(
+          base: pdfFont,
+          bold: pdfFont,
+        ),
         header: (context) {
           return Column(
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Column(
@@ -87,6 +103,7 @@ class IgServicePdfGenerator {
                                 text: '${merchantInfo.label}: ',
                                 style: TextStyle(
                                   color: PdfColor.fromHex('#5A5A5A'),
+                                  fontSize: 8,
                                 ),
                                 children: [
                                   TextSpan(
@@ -106,10 +123,57 @@ class IgServicePdfGenerator {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [],
+                      children: [
+                        for (final clientInfoValue in <String>{
+                          'Račun br. $paymentId',
+                          if (clientInfo.name.isNotEmpty) clientInfo.name,
+                          if (clientInfo.oib != null) clientInfo.oib!,
+                          if (clientInfo.address != null) clientInfo.address!,
+                        })
+                          Text(
+                            clientInfoValue,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: PdfColor.fromHex('#000000'),
+                              fontSize: 8,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ],
+              ),
+              SizedBox(height: 10),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border.all(),
+                ),
+                child: Row(
+                  children: [
+                    for (final label in <String>{
+                      'Naziv proizvoda ili usluge',
+                      'Količina',
+                      'Mj. jedinica',
+                      'Cijena EUR',
+                      'Cijena HRK',
+                      'PDV',
+                    }.indexed)
+                      Expanded(
+                        flex: label.$1 == 0 ? 2 : 1,
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Text(
+                            label.$2,
+                            textAlign: label.$2 == 'PDV' ? TextAlign.center : null,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 8,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ],
           );
@@ -118,38 +182,205 @@ class IgServicePdfGenerator {
           return [
             for (final invoiceItem in invoiceItems.indexed)
               DecoratedBox(
-                decoration: BoxDecoration(
-                  border: invoiceItem.$1 == 0
-                      ? const Border(
-                          left: BorderSide(),
-                          top: BorderSide(),
-                          right: BorderSide(),
-                          bottom: BorderSide.none,
-                        )
-                      : invoiceItem.$1 == invoiceItems.length - 1
-                          ? const Border(
-                              left: BorderSide(),
-                              top: BorderSide.none,
-                              right: BorderSide(),
-                              bottom: BorderSide(),
-                            )
-                          : Border.all(),
+                decoration: const BoxDecoration(
+                  border: Border(
+                    left: BorderSide(),
+                    top: BorderSide.none,
+                    right: BorderSide(),
+                    bottom: BorderSide(),
+                  ),
                 ),
                 child: Row(
                   children: [
+                    for (int i = 0; i < 4; i++)
+                      Expanded(
+                        flex: i == 0 ? 2 : 1,
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Text(
+                            switch (i) {
+                              0 => invoiceItem.$2.name,
+                              1 => invoiceItem.$2.amount.toStringAsFixed(2),
+                              2 => invoiceItem.$2.measure,
+                              3 => invoiceItem.$2.price.toStringAsFixed(2),
+                              int() => throw 'Not implemented.',
+                            },
+                            style: const TextStyle(
+                              fontSize: 8,
+                            ),
+                          ),
+                        ),
+                      ),
                     Expanded(
-                      child: Text(
-                        invoiceItem.$2.name,
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Text(
+                          (invoiceItem.$2.price * 7.5345).toStringAsFixed(2),
+                          style: const TextStyle(
+                            fontSize: 8,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Text(
+                          '25%',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 8,
+                          ),
+                        ),
                       ),
                     ),
                   ],
+                ),
+              ),
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Text(
+                      'UKUPNO:',
+                      style: const TextStyle(
+                        fontSize: 8,
+                      ),
+                    ),
+                  ),
+                ),
+                for (int i = 0; i < 2; i++)
+                  Expanded(
+                    child: SizedBox(),
+                  ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Builder(
+                      builder: (context) {
+                        num sum = 0;
+                        for (var item in invoiceItems) {
+                          sum += (item.price * item.amount);
+                        }
+                        return Text(
+                          sum.toStringAsFixed(2),
+                          style: const TextStyle(
+                            fontSize: 8,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Builder(
+                      builder: (context) {
+                        num sum = 0;
+                        for (var item in invoiceItems) {
+                          sum += (item.price * item.amount);
+                        }
+                        sum *= 7.5345;
+                        return Text(
+                          sum.toStringAsFixed(2),
+                          style: const TextStyle(
+                            fontSize: 8,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Builder(
+                      builder: (context) {
+                        num sum = 0;
+                        for (var item in invoiceItems) {
+                          sum += (item.price * item.amount);
+                        }
+                        sum *= .25;
+                        return Text(
+                          '${sum.toStringAsFixed(2)} EUR\n${(sum * 7.5345).toStringAsFixed(2)} HRK',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 8,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            for (final paymentInfo in <({String label, String value})>{
+              (
+                label: 'Datum i vrijeme',
+                value: '${DateTime.now().day}.${DateTime.now().month}.${DateTime.now().year} '
+                    '${DateTime.now().hour}:${DateTime.now().minute}',
+              ),
+              (
+                label: 'Način plaćanja',
+                value: paymentMethod,
+              ),
+              (
+                label: 'Šifra namjene',
+                value: paymentId,
+              ),
+              (
+                label: 'Model plaćanja',
+                value: paymentModel,
+              ),
+            })
+              Padding(
+                padding: const EdgeInsets.all(4),
+                child: RichText(
+                  text: TextSpan(
+                    text: '${paymentInfo.label}: ',
+                    style: TextStyle(
+                      fontSize: 8,
+                      color: PdfColor.fromHex('#5A5A5A'),
+                    ),
+                    children: [
+                      TextSpan(
+                        text: paymentInfo.value,
+                        style: TextStyle(
+                          color: PdfColor.fromHex('#000000'),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
           ];
         },
         footer: (context) {
           return Row(
-            children: [],
+            children: [
+              Expanded(
+                child: Text(
+                  'Račun br. $paymentId, ${DateTime.now().day}.${DateTime.now().month}.${DateTime.now().year} '
+                  '${DateTime.now().hour}:${DateTime.now().minute}',
+                  style: const TextStyle(
+                    fontSize: 6,
+                  ),
+                ),
+              ),
+              if (IgServiceCacheManager.merchantData != null) ...[
+                Text(
+                  '${IgServiceCacheManager.merchantData!.name}, '
+                  '${IgServiceCacheManager.merchantData!.address}, '
+                  'OIB ${IgServiceCacheManager.merchantData!.oib}',
+                  style: const TextStyle(
+                    fontSize: 6,
+                  ),
+                ),
+              ],
+            ],
           );
         },
       ),

@@ -118,12 +118,6 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
       anchor.click();
       html.document.body?.children.remove(anchor);
       html.Url.revokeObjectUrl(url);
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (context) => const IgRouteInvoiceGenerator(),
-        ),
-        (Route<dynamic> route) => false,
-      );
     }
   }
 
@@ -978,6 +972,9 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                     }
                     setThisState(() => _generatingInvoice = true);
                     await IgServicePdfGenerator.generatePdfInvoice(
+                      paymentId: _paymentCodeTextController.text.trim(),
+                      paymentMethod: _paymentMethodTextController.text.trim(),
+                      paymentModel: _paymentModelTextController.text.trim(),
                       invoiceItems: _invoiceItems,
                       clientInfo: IgModelSaleClient(
                         name: _clientNameTextController.text.trim(),

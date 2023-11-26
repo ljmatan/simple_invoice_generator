@@ -14,6 +14,8 @@ class IgRouteClientInfoEntry extends StatefulWidget {
   State<IgRouteClientInfoEntry> createState() => _IgRouteClientInfoEntryState();
 }
 
+extension _I18N on _IgRouteClientInfoEntryState {}
+
 class _IgRouteClientInfoEntryState extends State<IgRouteClientInfoEntry> with IgInternationalization {
   final _formKey = GlobalKey<FormState>();
 
@@ -52,7 +54,7 @@ class _IgRouteClientInfoEntryState extends State<IgRouteClientInfoEntry> with Ig
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    i18n(this, 'clientInfoEntry'),
+                    i18n(widget, 'clientInfoEntry'),
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
@@ -61,7 +63,7 @@ class _IgRouteClientInfoEntryState extends State<IgRouteClientInfoEntry> with Ig
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    i18n(this, 'clientInfoEntryDisclaimer'),
+                    i18n(widget, 'clientInfoEntryDisclaimer'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.grey.shade700,
@@ -83,7 +85,7 @@ class _IgRouteClientInfoEntryState extends State<IgRouteClientInfoEntry> with Ig
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        i18n(this, 'clientInfoEntry'),
+                        i18n(widget, 'clientInfoEntry'),
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 21,
@@ -91,7 +93,7 @@ class _IgRouteClientInfoEntryState extends State<IgRouteClientInfoEntry> with Ig
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        i18n(this, 'clientInfoEntryDisclaimer'),
+                        i18n(widget, 'clientInfoEntryDisclaimer'),
                         style: TextStyle(
                           color: Colors.grey.shade700,
                         ),
@@ -103,17 +105,17 @@ class _IgRouteClientInfoEntryState extends State<IgRouteClientInfoEntry> with Ig
                         String? Function(String?) validator,
                       })>{
                         (
-                          label: i18n(this, 'clientName'),
+                          label: i18n(widget, 'clientName'),
                           controller: _nameTextController,
                           validator: IgServiceInputValidation.name,
                         ),
                         (
-                          label: i18n(this, 'personalIdNumber'),
+                          label: i18n(widget, 'personalIdNumber'),
                           controller: _oibTextController,
                           validator: IgServiceInputValidation.oib,
                         ),
                         (
-                          label: i18n(this, 'address'),
+                          label: i18n(widget, 'address'),
                           controller: _addressTextController,
                           validator: IgServiceInputValidation.address,
                         ),
@@ -133,7 +135,7 @@ class _IgRouteClientInfoEntryState extends State<IgRouteClientInfoEntry> with Ig
                       if (MediaQuery.of(context).size.width >= 1000) ...[
                         OutlinedButton(
                           child: Text(
-                            i18n(this, 'saveData'),
+                            i18n(widget, 'saveData'),
                           ),
                           onPressed: () async {
                             if (_formKey.currentState?.validate() == true) await _saveData();
@@ -142,7 +144,7 @@ class _IgRouteClientInfoEntryState extends State<IgRouteClientInfoEntry> with Ig
                         const SizedBox(height: 10),
                         OutlinedButton(
                           child: Text(
-                            i18n(this, 'exit'),
+                            i18n(widget, 'exit'),
                           ),
                           onPressed: () {
                             Navigator.of(context).pushAndRemoveUntil(
@@ -186,7 +188,7 @@ class _IgRouteClientInfoEntryState extends State<IgRouteClientInfoEntry> with Ig
                         height: 48,
                         child: Center(
                           child: Text(
-                            i18n(this, 'exit'),
+                            i18n(widget, 'exit'),
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
@@ -214,7 +216,7 @@ class _IgRouteClientInfoEntryState extends State<IgRouteClientInfoEntry> with Ig
                           height: 48,
                           child: Center(
                             child: Text(
-                              i18n(this, 'saveData'),
+                              i18n(widget, 'saveData'),
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,

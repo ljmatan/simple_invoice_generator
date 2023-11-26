@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 /// This class provides functionality for translating text and supports multiple languages.
 ///
@@ -12,18 +13,22 @@ mixin class IgInternationalization {
   /// Parent widget instance is forwarded as a [view] parameter
   /// in order to identify the section of the app where this text will be applied.
   ///
-  String i18n(IgInternationalization view, String id) {
-    final languageMap = _values.firstWhere((value) => value.languageCode.contains(_locale));
-    final value = languageMap.routeValues[view.runtimeType.toString()]?[id];
-    if (value == null) debugPrint('IgI18n: not found: $id');
-    return value ?? 'N/A';
+  String i18n(Widget view, String id) {
+    try {
+      final languageMap = _values.firstWhere((value) => value.languageCode.contains(_locale));
+      final value = languageMap.routeValues[view.runtimeType.toString()]?[id];
+      if (value == null) debugPrint('IgI18n: not found: $id');
+      return value!;
+    } catch (e) {
+      return 'N/A';
+    }
   }
 
   static const _values = <({String languageCode, Map<String, Map<String, String>> routeValues})>[
     (
       languageCode: 'hr,bs,sr',
-      routeValues: <String, Map<String, String>>{
-        '_IgRouteClientInfoEntryState': {
+      routeValues: {
+        'IgRouteClientInfoEntry': {
           'clientInfoEntry': 'Unos podataka klijenta',
           'clientInfoEntryDisclaimer':
               'Donje podatke unosite kako biste prilikom ponovnog ulaska u stranicu ponovno pristupili tim informacijama.',
@@ -39,7 +44,7 @@ mixin class IgInternationalization {
     (
       languageCode: 'en',
       routeValues: {
-        '_IgRouteClientInfoEntryState': {
+        'IgRouteClientInfoEntry': {
           'clientInfoEntry': 'Client info entry',
           'clientInfoEntryDisclaimer': 'The following information is provided in order to be displayed on the generated PDF file, '
               'and is persisted to your device.',
