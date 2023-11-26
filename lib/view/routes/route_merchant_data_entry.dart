@@ -22,7 +22,7 @@ class _IgRouteMerchantDataEntryState extends State<IgRouteMerchantDataEntry> {
       _addressTextController = TextEditingController(text: kDebugMode ? 'Ulica ta i ta 15' : null),
       _oibTextController = TextEditingController(text: kDebugMode ? '55545787885' : null),
       _mbTextController = TextEditingController(text: kDebugMode ? '01554972' : null),
-      _ibanTextController = TextEditingController(text: kDebugMode ? 'HR4624020063209568665' : null),
+      _ibanTextController = TextEditingController(text: kDebugMode ? 'HR4624020068809568865' : null),
       _phoneNumberTextController = TextEditingController(text: kDebugMode ? '+385955604626' : null);
 
   Future<void> _continue() async {
