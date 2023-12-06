@@ -91,7 +91,8 @@ Without a server, the Flutter web app's dynamic features won't function properly
 
 ---
 
-As can be seen below, this Flutter project is separated into three main sections: `models`, `services`, and `view`.
+As can be seen below, this project is separated into three main subsections: `models`, `services`, and `view`,
+with the rest of the project following a typical Flutter web project structure.
 
 ```txt
 📁 simple_invoice_generator

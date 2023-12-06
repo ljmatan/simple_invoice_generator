@@ -45,12 +45,21 @@ class IgServiceInputValidation {
   }
 
   static String? iban(String? input) {
-    if (!RegExp(r'^HR\d{19}$').hasMatch(input?.replaceAll(' ', '') ?? '')) return 'IBAN nije u ispravnom formatu.';
+    if (!RegExp(r'^HR\d{19}$', caseSensitive: false).hasMatch(input?.replaceAll(' ', '') ?? '')) return 'IBAN nije u ispravnom formatu.';
     return null;
   }
 
   static String? phone(String? input) {
     if (!RegExp(r'^\+?(\d+)$').hasMatch(input?.replaceAll(' ', '') ?? '')) return 'Molimo provjerite uneseni telefonski broj.';
+    return null;
+  }
+
+  static String? number(
+    String? input, {
+    bool allowNegative = false,
+  }) {
+    final parsedNumber = num.tryParse(input?.replaceAll(',', '.') ?? '');
+    if (parsedNumber == null || !allowNegative && parsedNumber < 0) return 'Molimo provjerite unesenu vrijednost.';
     return null;
   }
 }

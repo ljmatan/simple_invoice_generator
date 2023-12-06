@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:simple_invoice_generator/models/model_invoice.dart';
 import 'package:simple_invoice_generator/models/model_merchant_data.dart';
 import 'package:simple_invoice_generator/models/model_sale_client.dart';
 import 'package:simple_invoice_generator/models/model_sale_item.dart';
@@ -32,6 +33,10 @@ class IgServiceCacheManager {
   /// List of cached client information.
   ///
   static List<IgModelSaleClient> clients = [];
+
+  /// List of generated invoices.
+  ///
+  static List<IgModelInvoice> invoices = [];
 
   /// Initialises the cache manager and this class properties.
   ///
@@ -70,6 +75,19 @@ class IgServiceCacheManager {
           final clientMap = jsonDecode(clientEncodedJson);
           final client = IgModelSaleClient.fromJson(clientMap);
           clients.add(client);
+        } catch (e) {
+          debugPrint('IgServiceCacheManager.init client serialization error: $e');
+        }
+      }
+    }
+    // Get cached invoices.
+    final invoicesEncodedJson = instance.getStringList('invoices');
+    if (invoicesEncodedJson != null) {
+      for (var invoiceEncodedJson in invoicesEncodedJson) {
+        try {
+          final invoiceMap = jsonDecode(invoiceEncodedJson);
+          final invoice = IgModelInvoice.fromJson(invoiceMap);
+          invoices.add(invoice);
         } catch (e) {
           debugPrint('IgServiceCacheManager.init client serialization error: $e');
         }

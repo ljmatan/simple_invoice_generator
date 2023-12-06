@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:simple_invoice_generator/models/model_sale_client.dart';
-import 'package:simple_invoice_generator/view/i18n.dart';
 import 'package:simple_invoice_generator/view/routes/route_invoice_generator.dart';
 import 'package:simple_invoice_generator/services/service_cache_manager.dart';
 import 'package:simple_invoice_generator/services/service_input_validation.dart';
@@ -14,9 +13,7 @@ class IgRouteClientInfoEntry extends StatefulWidget {
   State<IgRouteClientInfoEntry> createState() => _IgRouteClientInfoEntryState();
 }
 
-extension _I18N on _IgRouteClientInfoEntryState {}
-
-class _IgRouteClientInfoEntryState extends State<IgRouteClientInfoEntry> with IgInternationalization {
+class _IgRouteClientInfoEntryState extends State<IgRouteClientInfoEntry> {
   final _formKey = GlobalKey<FormState>();
 
   final _nameTextController = TextEditingController(),
@@ -53,17 +50,17 @@ class _IgRouteClientInfoEntryState extends State<IgRouteClientInfoEntry> with Ig
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    i18n(widget, 'clientInfoEntry'),
+                  const Text(
+                    'Unos podataka klijenta',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 21,
                     ),
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    i18n(widget, 'clientInfoEntryDisclaimer'),
+                    'Donje podatke unosite kako biste prilikom ponovnog ulaska u stranicu ponovno pristupili tim informacijama.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.grey.shade700,
@@ -84,16 +81,16 @@ class _IgRouteClientInfoEntryState extends State<IgRouteClientInfoEntry> with Ig
                     mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        i18n(widget, 'clientInfoEntry'),
-                        style: const TextStyle(
+                      const Text(
+                        'Unos podataka klijenta',
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 21,
                         ),
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        i18n(widget, 'clientInfoEntryDisclaimer'),
+                        'Donje podatke unosite kako biste prilikom ponovnog ulaska u stranicu ponovno pristupili tim informacijama.',
                         style: TextStyle(
                           color: Colors.grey.shade700,
                         ),
@@ -105,17 +102,17 @@ class _IgRouteClientInfoEntryState extends State<IgRouteClientInfoEntry> with Ig
                         String? Function(String?) validator,
                       })>{
                         (
-                          label: i18n(widget, 'clientName'),
+                          label: 'Naziv klijenta',
                           controller: _nameTextController,
                           validator: IgServiceInputValidation.name,
                         ),
                         (
-                          label: i18n(widget, 'personalIdNumber'),
+                          label: 'Osobni identifikacijski broj',
                           controller: _oibTextController,
                           validator: IgServiceInputValidation.oib,
                         ),
                         (
-                          label: i18n(widget, 'address'),
+                          label: 'Adresa',
                           controller: _addressTextController,
                           validator: IgServiceInputValidation.address,
                         ),
@@ -124,6 +121,7 @@ class _IgRouteClientInfoEntryState extends State<IgRouteClientInfoEntry> with Ig
                           padding: textInput.$1 == 2 ? const EdgeInsets.only(bottom: 16) : const EdgeInsets.only(bottom: 10),
                           child: TextFormField(
                             controller: textInput.$2.controller,
+                            autovalidateMode: AutovalidateMode.onUserInteraction,
                             decoration: InputDecoration(
                               label: Text(
                                 textInput.$2.label,
@@ -134,8 +132,8 @@ class _IgRouteClientInfoEntryState extends State<IgRouteClientInfoEntry> with Ig
                         ),
                       if (MediaQuery.of(context).size.width >= 1000) ...[
                         OutlinedButton(
-                          child: Text(
-                            i18n(widget, 'saveData'),
+                          child: const Text(
+                            'NASTAVI',
                           ),
                           onPressed: () async {
                             if (_formKey.currentState?.validate() == true) await _saveData();
@@ -143,8 +141,8 @@ class _IgRouteClientInfoEntryState extends State<IgRouteClientInfoEntry> with Ig
                         ),
                         const SizedBox(height: 10),
                         OutlinedButton(
-                          child: Text(
-                            i18n(widget, 'exit'),
+                          child: const Text(
+                            'IZLAZ',
                           ),
                           onPressed: () {
                             Navigator.of(context).pushAndRemoveUntil(
@@ -186,10 +184,10 @@ class _IgRouteClientInfoEntryState extends State<IgRouteClientInfoEntry> with Ig
                       child: SizedBox(
                         width: MediaQuery.of(context).size.width,
                         height: 48,
-                        child: Center(
+                        child: const Center(
                           child: Text(
-                            i18n(widget, 'exit'),
-                            style: const TextStyle(
+                            'IZLAZ',
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
                             ),
@@ -214,10 +212,10 @@ class _IgRouteClientInfoEntryState extends State<IgRouteClientInfoEntry> with Ig
                         child: SizedBox(
                           width: MediaQuery.of(context).size.width,
                           height: 48,
-                          child: Center(
+                          child: const Center(
                             child: Text(
-                              i18n(widget, 'saveData'),
-                              style: const TextStyle(
+                              'NASTAVI',
+                              style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                                 fontSize: 16,

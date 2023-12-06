@@ -1,12 +1,12 @@
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart';
-import 'package:simple_invoice_generator/models/model_invoice_item.dart';
-import 'package:simple_invoice_generator/models/model_sale_client.dart';
+import 'package:simple_invoice_generator/models/model_invoice.dart';
 import 'package:simple_invoice_generator/services/service_cache_manager.dart';
 
 /// Class defining the PDF invoice generator methods and properties.
@@ -18,14 +18,14 @@ class IgServicePdfGenerator {
   ///
   static Future<void> _saveToDevice({
     required Uint8List fileBytes,
-    String? fileName,
+    required String filenamePrefix,
   }) async {
     final blob = html.Blob([fileBytes], 'application/pdf');
     final url = html.Url.createObjectUrlFromBlob(blob);
     final anchor = html.document.createElement('a') as html.AnchorElement
       ..href = url
       ..style.display = 'none'
-      ..download = 'Racun_${fileName ?? DateTime.now().millisecondsSinceEpoch.toString()}.pdf';
+      ..download = '${filenamePrefix}_${DateTime.now().millisecondsSinceEpoch.toString()}.pdf';
     html.document.body!.children.add(anchor);
     anchor.click();
     anchor.remove();
@@ -33,17 +33,15 @@ class IgServicePdfGenerator {
 
   /// Generates the PDF file with the given parameters, and stores it to the device.
   ///
-  static Future<void> generatePdfInvoice({
-    required String paymentId,
-    required List<IgModelInvoiceItem> invoiceItems,
-    required IgModelSaleClient clientInfo,
-    required String paymentModel,
-    required String paymentMethod,
+  static Future<void> generatePdfInvoice(
+    IgModelInvoice invoice, {
+    /// Whether this is a valid invoice or just a sale offer.
+    bool offerOnly = false,
   }) async {
     final pdf = Document();
     Font? pdfFont;
     try {
-      final fontData = await rootBundle.load('assets/fonts/TimesNewRoman-Regular.ttf');
+      final fontData = await rootBundle.load('assets/fonts/Asap-VariableFont_wdth,wght.ttf');
       pdfFont = Font.ttf(fontData);
     } catch (e) {
       debugPrint('IgServicePdfGenerator.generatePdfInvoice error: $e');
@@ -66,57 +64,35 @@ class IgServicePdfGenerator {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        for (final merchantInfo in <({String label, String value})>{
-                          (
-                            label: 'Naziv tvrtke',
-                            value: IgServiceCacheManager.merchantData?.name ?? 'N/A',
-                          ),
-                          (
-                            label: 'Email adresa',
-                            value: IgServiceCacheManager.merchantData?.email ?? 'N/A',
-                          ),
-                          (
-                            label: 'Adresa tvrtke',
-                            value: IgServiceCacheManager.merchantData?.address ?? 'N/A',
-                          ),
-                          (
-                            label: 'OIB',
-                            value: IgServiceCacheManager.merchantData?.oib ?? 'N/A',
-                          ),
-                          (
-                            label: 'MB',
-                            value: IgServiceCacheManager.merchantData?.mb ?? 'N/A',
-                          ),
-                          (
-                            label: 'IBAN',
-                            value: IgServiceCacheManager.merchantData?.iban ?? 'N/A',
-                          ),
-                          (
-                            label: 'Telefonski broj',
-                            value: IgServiceCacheManager.merchantData?.phoneNumber ?? 'N/A',
-                          ),
-                        })
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 2),
-                            child: RichText(
-                              text: TextSpan(
-                                text: '${merchantInfo.label}: ',
-                                style: TextStyle(
-                                  color: PdfColor.fromHex('#5A5A5A'),
-                                  fontSize: 8,
-                                ),
-                                children: [
-                                  TextSpan(
-                                    text: merchantInfo.value,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: PdfColor.fromHex('#000000'),
-                                    ),
+                        if (IgServiceCacheManager.merchantData != null)
+                          for (final merchantInfo in IgServiceCacheManager.merchantData!.formattedInfo.indexed)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: RichText(
+                                text: TextSpan(
+                                  text: merchantInfo.$1 == 0 ? '' : '${merchantInfo.$2.label}: ',
+                                  style: TextStyle(
+                                    color: PdfColor.fromHex('#5A5A5A'),
+                                    fontSize: 8,
                                   ),
-                                ],
+                                  children: [
+                                    TextSpan(
+                                      text: merchantInfo.$2.value,
+                                      style: merchantInfo.$1 == 0
+                                          ? TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: PdfColor.fromHex('#000000'),
+                                              fontSize: 12,
+                                            )
+                                          : TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: PdfColor.fromHex('#000000'),
+                                            ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
                       ],
                     ),
                   ),
@@ -125,18 +101,24 @@ class IgServicePdfGenerator {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         for (final clientInfoValue in <String>{
-                          'Račun br. $paymentId',
-                          if (clientInfo.name.isNotEmpty) clientInfo.name,
-                          if (clientInfo.oib != null) clientInfo.oib!,
-                          if (clientInfo.address != null) clientInfo.address!,
-                        })
+                          offerOnly ? 'PONUDA' : 'RAČUN BROJ ${invoice.paymentId}',
+                          if (invoice.clientInfo.name.isNotEmpty) invoice.clientInfo.name,
+                          if (invoice.clientInfo.oib != null) invoice.clientInfo.oib!,
+                          if (invoice.clientInfo.address != null) invoice.clientInfo.address!,
+                        }.indexed)
                           Text(
-                            clientInfoValue,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: PdfColor.fromHex('#000000'),
-                              fontSize: 8,
-                            ),
+                            clientInfoValue.$2,
+                            style: clientInfoValue.$1 == 0
+                                ? TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: PdfColor.fromHex('#000000'),
+                                    fontSize: 12,
+                                  )
+                                : TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: PdfColor.fromHex('#000000'),
+                                    fontSize: 8,
+                                  ),
                           ),
                       ],
                     ),
@@ -146,7 +128,7 @@ class IgServicePdfGenerator {
               SizedBox(height: 10),
               DecoratedBox(
                 decoration: BoxDecoration(
-                  border: Border.all(),
+                  border: Border.all(width: .1),
                 ),
                 child: Row(
                   children: [
@@ -156,7 +138,7 @@ class IgServicePdfGenerator {
                       'Mj. jedinica',
                       'Cijena EUR',
                       'Cijena HRK',
-                      'PDV',
+                      if (IgServiceCacheManager.merchantData?.vatApplied == true) 'PDV',
                     }.indexed)
                       Expanded(
                         flex: label.$1 == 0 ? 2 : 1,
@@ -164,7 +146,7 @@ class IgServicePdfGenerator {
                           padding: const EdgeInsets.all(4),
                           child: Text(
                             label.$2,
-                            textAlign: label.$2 == 'PDV' ? TextAlign.center : null,
+                            textAlign: label.$1 == 0 ? null : TextAlign.center,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 8,
@@ -180,14 +162,14 @@ class IgServicePdfGenerator {
         },
         build: (context) {
           return [
-            for (final invoiceItem in invoiceItems.indexed)
+            for (final invoiceItem in invoice.invoiceItems.indexed)
               DecoratedBox(
                 decoration: const BoxDecoration(
                   border: Border(
-                    left: BorderSide(),
+                    left: BorderSide(width: .1),
                     top: BorderSide.none,
-                    right: BorderSide(),
-                    bottom: BorderSide(),
+                    right: BorderSide(width: .1),
+                    bottom: BorderSide(width: .1),
                   ),
                 ),
                 child: Row(
@@ -202,38 +184,48 @@ class IgServicePdfGenerator {
                               0 => invoiceItem.$2.name,
                               1 => invoiceItem.$2.amount.toStringAsFixed(2),
                               2 => invoiceItem.$2.measure,
-                              3 => invoiceItem.$2.price.toStringAsFixed(2),
+                              3 => (invoiceItem.$2.price * invoiceItem.$2.amount).toStringAsFixed(2) +
+                                  (invoiceItem.$2.amount == 1
+                                      ? ''
+                                      : ' (${invoiceItem.$2.amount} x ${invoiceItem.$2.price.toStringAsFixed(2)}€)'),
                               int() => throw 'Not implemented.',
                             },
+                            textAlign: i == 0 ? null : TextAlign.center,
                             style: const TextStyle(
                               fontSize: 8,
                             ),
                           ),
                         ),
                       ),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.all(4),
-                        child: Text(
-                          (invoiceItem.$2.price * 7.5345).toStringAsFixed(2),
-                          style: const TextStyle(
-                            fontSize: 8,
+                    if (DateTime.now().year < 2024)
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Text(
+                            invoiceItem.$2.amount == 1
+                                ? (invoiceItem.$2.price * 7.5345).toStringAsFixed(2)
+                                : (invoiceItem.$2.price * invoiceItem.$2.amount * 7.5345).toStringAsFixed(2) +
+                                    ' (${invoiceItem.$2.amount} x ${(invoiceItem.$2.price * 7.5345).toStringAsFixed(2)})',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 8,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.all(4),
-                        child: Text(
-                          '25%',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 8,
+                    if (IgServiceCacheManager.merchantData?.vatApplied == true)
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Text(
+                            '25%',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 8,
+                            ),
                           ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -242,7 +234,7 @@ class IgServicePdfGenerator {
                 Expanded(
                   flex: 2,
                   child: Padding(
-                    padding: const EdgeInsets.all(4),
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                     child: Text(
                       'UKUPNO:',
                       style: const TextStyle(
@@ -261,51 +253,11 @@ class IgServicePdfGenerator {
                     child: Builder(
                       builder: (context) {
                         num sum = 0;
-                        for (var item in invoiceItems) {
+                        for (var item in invoice.invoiceItems) {
                           sum += (item.price * item.amount);
                         }
                         return Text(
-                          sum.toStringAsFixed(2),
-                          style: const TextStyle(
-                            fontSize: 8,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: Builder(
-                      builder: (context) {
-                        num sum = 0;
-                        for (var item in invoiceItems) {
-                          sum += (item.price * item.amount);
-                        }
-                        sum *= 7.5345;
-                        return Text(
-                          sum.toStringAsFixed(2),
-                          style: const TextStyle(
-                            fontSize: 8,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: Builder(
-                      builder: (context) {
-                        num sum = 0;
-                        for (var item in invoiceItems) {
-                          sum += (item.price * item.amount);
-                        }
-                        sum *= .25;
-                        return Text(
-                          '${sum.toStringAsFixed(2)} EUR\n${(sum * 7.5345).toStringAsFixed(2)} HRK',
+                          '${sum.toStringAsFixed(2)} EUR',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontSize: 8,
@@ -315,9 +267,58 @@ class IgServicePdfGenerator {
                     ),
                   ),
                 ),
+                if (DateTime.now().year < 2024)
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Builder(
+                        builder: (context) {
+                          num sum = 0;
+                          for (var item in invoice.invoiceItems) {
+                            sum += (item.price * item.amount);
+                          }
+                          sum *= 7.5345;
+                          return Text(
+                            '${sum.toStringAsFixed(2)} HRK',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 8,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                if (IgServiceCacheManager.merchantData?.vatApplied == true)
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Builder(
+                        builder: (context) {
+                          num sum = 0;
+                          for (var item in invoice.invoiceItems) {
+                            sum += (item.price * item.amount);
+                          }
+                          sum *= .25;
+                          return Text(
+                            '${sum.toStringAsFixed(2)} EUR\n${(sum * 7.5345).toStringAsFixed(2)} HRK',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 8,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
               ],
             ),
             for (final paymentInfo in <({String label, String value})>{
+              if (IgServiceCacheManager.merchantData?.vatApplied != true && !offerOnly)
+                (
+                  label: 'PDV',
+                  value: 'nije obračunan sukladno odredbama članka 90. stavka 2. Zakona o PDVu',
+                ),
               (
                 label: 'Datum i vrijeme',
                 value: '${DateTime.now().day}.${DateTime.now().month}.${DateTime.now().year} '
@@ -325,15 +326,15 @@ class IgServicePdfGenerator {
               ),
               (
                 label: 'Način plaćanja',
-                value: paymentMethod,
+                value: invoice.paymentMethod,
               ),
               (
                 label: 'Šifra namjene',
-                value: paymentId,
+                value: invoice.paymentId.replaceAll('/', ''),
               ),
               (
                 label: 'Model plaćanja',
-                value: paymentModel,
+                value: invoice.paymentModel,
               ),
             })
               Padding(
@@ -359,33 +360,41 @@ class IgServicePdfGenerator {
           ];
         },
         footer: (context) {
-          return Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Račun br. $paymentId, ${DateTime.now().day}.${DateTime.now().month}.${DateTime.now().year} '
-                  '${DateTime.now().hour}:${DateTime.now().minute}',
-                  style: const TextStyle(
-                    fontSize: 6,
-                  ),
-                ),
-              ),
-              if (IgServiceCacheManager.merchantData != null) ...[
-                Text(
-                  '${IgServiceCacheManager.merchantData!.name}, '
-                  '${IgServiceCacheManager.merchantData!.address}, '
-                  'OIB ${IgServiceCacheManager.merchantData!.oib}',
-                  style: const TextStyle(
-                    fontSize: 6,
-                  ),
-                ),
-              ],
-            ],
+          return Text(
+            '${context.pageNumber} / ${context.pagesCount} - ' +
+                (offerOnly ? '' : 'Račun br. ${invoice.paymentId} - ') +
+                '${DateTime.now().day}.${DateTime.now().month}.${DateTime.now().year} '
+                    '${DateTime.now().hour}:${DateTime.now().minute} - '
+                    '${IgServiceCacheManager.merchantData?.name}, '
+                    '${IgServiceCacheManager.merchantData?.address}, '
+                    'OIB ${IgServiceCacheManager.merchantData?.oib}\n'
+                    '${IgServiceCacheManager.merchantData?.overseeingCourtBody}, '
+                    'članovi uprave: ${IgServiceCacheManager.merchantData?.boardMembers} - '
+                    'temeljni kapital društva uplaćen u cijelosti: ${IgServiceCacheManager.merchantData?.capitalBalance} EUR',
+            style: const TextStyle(
+              fontSize: 6,
+            ),
           );
         },
       ),
     );
     final pdfBytes = await pdf.save();
-    await _saveToDevice(fileBytes: pdfBytes);
+    await _saveToDevice(
+      fileBytes: pdfBytes,
+      filenamePrefix: offerOnly ? 'Ponuda' : 'Racun',
+    );
+    try {
+      IgServiceCacheManager.invoices.add(invoice);
+      await IgServiceCacheManager.instance.setStringList(
+        'invoices',
+        IgServiceCacheManager.invoices
+            .map(
+              (invoice) => jsonEncode(invoice.toJson()),
+            )
+            .toList(),
+      );
+    } catch (e) {
+      debugPrint('IgServicePdfGenerator.generatePdfInvoice: Cache failed: $e');
+    }
   }
 }

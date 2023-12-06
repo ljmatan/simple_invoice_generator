@@ -23,7 +23,7 @@ class _IgRouteInvoiceItemEntryState extends State<IgRouteInvoiceItemEntry> {
     final invoiceItem = IgModelSaleItem(
       name: _nameTextController.text.trim(),
       measure: _measureTextController.text.trim(),
-      price: num.parse(_priceTextController.text.trim()),
+      price: num.parse(_priceTextController.text.replaceAll(',', '.').trim()),
     );
     IgServiceCacheManager.invoiceItems.add(invoiceItem);
     await IgServiceCacheManager.instance.setStringList(
@@ -111,14 +111,36 @@ class _IgRouteInvoiceItemEntryState extends State<IgRouteInvoiceItemEntry> {
                       }.indexed)
                         Padding(
                           padding: textInput.$1 == 2 ? const EdgeInsets.only(bottom: 16) : const EdgeInsets.only(bottom: 10),
-                          child: TextFormField(
-                            controller: textInput.$2.controller,
-                            decoration: InputDecoration(
-                              label: Text(
-                                textInput.$2.label,
-                              ),
-                            ),
-                          ),
+                          child: textInput.$1 == 1
+                              ? DropdownMenu(
+                                  controller: textInput.$2.controller,
+                                  label: Text(textInput.$2.label),
+                                  inputDecorationTheme: Theme.of(context).inputDecorationTheme,
+                                  width: MediaQuery.of(context).size.width < 1000
+                                      ? MediaQuery.of(context).size.width - 32
+                                      : MediaQuery.of(context).size.width / 2,
+                                  dropdownMenuEntries: [
+                                    for (final measure in <String>{
+                                      'KILOGRAM',
+                                      'LITRA',
+                                      'KOMAD',
+                                      'METAR',
+                                    }..addAll(IgServiceCacheManager.invoiceItems.map((invoiceItem) => invoiceItem.measure)))
+                                      DropdownMenuEntry(
+                                        value: measure,
+                                        label: measure,
+                                      ),
+                                  ],
+                                )
+                              : TextFormField(
+                                  controller: textInput.$2.controller,
+                                  decoration: InputDecoration(
+                                    label: Text(
+                                      textInput.$2.label,
+                                    ),
+                                  ),
+                                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                                ),
                         ),
                       if (MediaQuery.of(context).size.width >= 1000) ...[
                         OutlinedButton(

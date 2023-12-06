@@ -22,6 +22,15 @@ class InvoiceGenerator extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        primaryColor: const Color(0xffDFCFBD),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xffDFCFBD)),
+        fontFamily: 'Asap',
+        textTheme: const TextTheme(
+          bodyMedium: TextStyle(
+            color: Color(0xff5A4837),
+          ),
+        ),
+        dividerColor: Colors.grey,
         scaffoldBackgroundColor: Colors.white,
         splashColor: Colors.transparent,
         focusColor: Colors.transparent,
@@ -30,6 +39,13 @@ class InvoiceGenerator extends StatelessWidget {
         inputDecorationTheme: const InputDecorationTheme(
           isDense: true,
           border: OutlineInputBorder(),
+        ),
+        appBarTheme: AppBarTheme(
+          toolbarHeight: MediaQuery.of(context).size.width < 1000
+              ? kToolbarHeight
+              : MediaQuery.of(context).size.height * .07 > 100
+                  ? 100
+                  : MediaQuery.of(context).size.height * .07,
         ),
       ),
       home: IgServiceCacheManager.merchantData == null ? const IgRouteMerchantDataEntry() : const IgRouteInvoiceGenerator(),

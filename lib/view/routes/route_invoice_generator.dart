@@ -1,14 +1,9 @@
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
-import 'dart:convert';
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
+import 'package:simple_invoice_generator/models/model_invoice.dart';
 import 'package:simple_invoice_generator/models/model_invoice_item.dart';
-import 'package:simple_invoice_generator/models/model_merchant_data.dart';
 import 'package:simple_invoice_generator/models/model_sale_client.dart';
-import 'package:simple_invoice_generator/models/model_sale_item.dart';
 import 'package:simple_invoice_generator/view/routes/route_client_info_entry.dart';
+import 'package:simple_invoice_generator/view/routes/route_data_overview.dart';
 import 'package:simple_invoice_generator/view/routes/route_invoice_item_entry.dart';
 import 'package:simple_invoice_generator/view/routes/route_merchant_data_entry.dart';
 import 'package:simple_invoice_generator/services/service_cache_manager.dart';
@@ -23,107 +18,68 @@ class IgRouteInvoiceGenerator extends StatefulWidget {
 }
 
 class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
-  /// Import the company, invoice item and client data which can be exported with the [_exportData] method.
-  ///
-  Future<void> _importData() async {
-    final input = html.FileUploadInputElement()..accept = '.txt,.json';
-    input.onChange.listen(
-      (event) {
-        if (input.files?.isNotEmpty == true) {
-          final file = input.files!.first;
-          final fileBlob = file.slice();
-          final fileReader = html.FileReader();
-          fileReader.onLoad.listen(
-            (e) async {
-              final fileBytes = Uint8List.fromList(fileReader.result as List<int>);
-              String fileContents = String.fromCharCodes(fileBytes);
-              final Map<String, dynamic> importedData = jsonDecode(fileContents);
-              final companyInfoJson = importedData['companyInfo'];
-              debugPrint('$companyInfoJson');
-              if (companyInfoJson != null) {
-                try {
-                  IgServiceCacheManager.merchantData = IgModelMerchantData.fromJson(companyInfoJson);
-                  await IgServiceCacheManager.instance.setString('merchantData', jsonEncode(companyInfoJson));
-                } catch (e) {
-                  debugPrint('$e');
-                }
-              }
-              final invoiceItemsJson = importedData['invoiceItems'];
-              if (invoiceItemsJson != null) {
-                try {
-                  IgServiceCacheManager.invoiceItems.clear();
-                  IgServiceCacheManager.invoiceItems.addAll(
-                    (invoiceItemsJson as Iterable).map(
-                      (invoiceItemJson) => IgModelSaleItem.fromJson(invoiceItemJson),
-                    ),
-                  );
-                  await IgServiceCacheManager.instance.setStringList(
-                    'invoiceItems',
-                    invoiceItemsJson.map((clientJson) => jsonEncode(clientJson)).toList(),
-                  );
-                } catch (e) {
-                  debugPrint('$e');
-                }
-              }
-              final clientsJson = importedData['clients'];
-              if (clientsJson != null) {
-                try {
-                  IgServiceCacheManager.clients.clear();
-                  IgServiceCacheManager.clients.addAll(
-                    (clientsJson as Iterable).map(
-                      (clientJson) => IgModelSaleClient.fromJson(clientJson),
-                    ),
-                  );
-                  await IgServiceCacheManager.instance.setStringList(
-                    'clients',
-                    clientsJson.map((clientJson) => jsonEncode(clientJson)).toList(),
-                  );
-                } catch (e) {
-                  debugPrint('$e');
-                }
-              }
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(
-                  builder: (context) => const IgRouteInvoiceGenerator(),
-                ),
-                (Route<dynamic> route) => false,
-              );
-            },
-          );
-          fileReader.readAsArrayBuffer(fileBlob);
-        }
-      },
-    );
-    input.click();
-  }
+  late Set<({String title, void Function() onTap})> _actions;
 
-  /// Export all of the cached data in the JSON format.
-  ///
-  Future<void> _exportData() async {
-    if (html.document.body != null) {
-      final cachedData = <String, dynamic>{
-        'companyInfo': IgServiceCacheManager.merchantData?.toJson(),
-        'invoiceItems': IgServiceCacheManager.invoiceItems.map((invoiceItem) => invoiceItem.toJson()).toList(),
-        'clients': IgServiceCacheManager.clients.map((client) => client.toJson()).toList(),
-      };
-      final text = jsonEncode(cachedData);
-      final bytes = utf8.encode(text);
-      final blob = html.Blob([bytes]);
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      final anchor = html.document.createElement('a') as html.AnchorElement
-        ..href = url
-        ..style.display = 'none'
-        ..download = 'Export_${DateTime.now().millisecondsSinceEpoch}.json';
-      html.document.body?.children.add(anchor);
-      anchor.click();
-      html.document.body?.children.remove(anchor);
-      html.Url.revokeObjectUrl(url);
-    }
+  @override
+  void initState() {
+    super.initState();
+    _actions = <({String title, void Function() onTap})>{
+      if (IgServiceCacheManager.cookieConsentApproved)
+        (
+          title: 'PREGLED PODATAKA',
+          onTap: () {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (context) => const IgRouteDataOverview(),
+              ),
+              (Route<dynamic> route) => false,
+            );
+          },
+        ),
+      if (IgServiceCacheManager.cookieConsentApproved)
+        (
+          title: 'DODAJ ARTIKL',
+          onTap: () {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (context) => const IgRouteInvoiceItemEntry(),
+              ),
+              (Route<dynamic> route) => false,
+            );
+          },
+        ),
+      if (IgServiceCacheManager.cookieConsentApproved)
+        (
+          title: 'DODAJ KLIJENTA',
+          onTap: () {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (context) => const IgRouteClientInfoEntry(),
+              ),
+              (Route<dynamic> route) => false,
+            );
+          },
+        ),
+      (
+        title: 'IZMIJENI PODATKE TVRTKE',
+        onTap: () {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (context) => const IgRouteMerchantDataEntry(),
+            ),
+            (Route<dynamic> route) => false,
+          );
+        },
+      ),
+    };
   }
 
   final _formKey = GlobalKey<FormState>();
 
-  final _clientNameTextController = TextEditingController(),
+  final _paymentIdTextController = TextEditingController(),
+      _paymentLocationIdTextController = TextEditingController(text: '1'),
+      _paymentRegisterIdTextController = TextEditingController(text: '1'),
+      _clientNameTextController = TextEditingController(),
       _clientOibTextController = TextEditingController(),
       _clientAddressTextController = TextEditingController();
 
@@ -133,8 +89,8 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
       _invoiceItemPriceTextController = TextEditingController();
 
   final _paymentMethodTextController = TextEditingController(text: 'Transakcija na bankovni račun'),
-      _paymentModelTextController = TextEditingController(text: 'HR99'),
-      _paymentCodeTextController = TextEditingController(text: DateTime.now().millisecondsSinceEpoch.toString());
+      _paymentModelTextController = TextEditingController(text: 'HR99');
+  final _paymentMethodFocusNode = FocusNode(), _paymentModelFocusNode = FocusNode();
 
   String? _invoiceItemValidationError;
 
@@ -155,6 +111,11 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
             fontWeight: FontWeight.bold,
           ),
         ),
+        toolbarHeight: MediaQuery.of(context).size.width < 1000
+            ? kToolbarHeight
+            : MediaQuery.of(context).size.height * .07 > 100
+                ? 100
+                : MediaQuery.of(context).size.height * .07,
         actions: MediaQuery.of(context).size.width < 1000
             ? [
                 IconButton(
@@ -163,72 +124,28 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                 ),
               ]
             : [
-                for (final action in <({String title, void Function() onTap})>{
-                  (
-                    title: 'IMPORT PODATAKA',
-                    onTap: () async => await _importData(),
-                  ),
-                  (
-                    title: 'EXPORT PODATAKA',
-                    onTap: () async => await _exportData(),
-                  ),
-                  (
-                    title: 'DODAJ ARTIKL',
-                    onTap: () {
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(
-                          builder: (context) => const IgRouteInvoiceItemEntry(),
+                for (final action in _actions.indexed) ...[
+                  if (action.$1 != 0)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 5),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade700,
                         ),
-                        (Route<dynamic> route) => false,
-                      );
-                    },
-                  ),
-                  (
-                    title: 'DODAJ KLIJENTA',
-                    onTap: () {
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(
-                          builder: (context) => const IgRouteClientInfoEntry(),
-                        ),
-                        (Route<dynamic> route) => false,
-                      );
-                    },
-                  ),
-                  (
-                    title: 'IZMIJENI PODATKE TVRTKE',
-                    onTap: () {
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(
-                          builder: (context) => const IgRouteMerchantDataEntry(),
-                        ),
-                        (Route<dynamic> route) => false,
-                      );
-                    },
-                  ),
-                }.indexed)
-                  Row(
-                    children: [
-                      if (action.$1 != 0)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 5),
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade700,
-                            ),
-                            child: const SizedBox(height: 20, width: 1),
-                          ),
-                        ),
-                      TextButton(
-                        child: Text(
-                          action.$2.title,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        onPressed: action.$2.onTap,
+                        child: const SizedBox(height: 20, width: 1),
                       ),
-                    ],
+                    ),
+                  TextButton(
+                    child: Text(
+                      action.$2.title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    onPressed: action.$2.onTap,
                   ),
+                ],
                 const SizedBox(width: 16),
               ],
       ),
@@ -236,54 +153,13 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            for (final action in <({String title, void Function() onTap})>{
-              (
-                title: 'IMPORT PODATAKA',
-                onTap: () async => await _importData(),
-              ),
-              (
-                title: 'EXPORT PODATAKA',
-                onTap: () async => await _exportData(),
-              ),
-              (
-                title: 'DODAJ ARTIKL',
-                onTap: () {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                      builder: (context) => const IgRouteInvoiceItemEntry(),
-                    ),
-                    (Route<dynamic> route) => false,
-                  );
-                },
-              ),
-              (
-                title: 'DODAJ KLIJENTA',
-                onTap: () {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                      builder: (context) => const IgRouteClientInfoEntry(),
-                    ),
-                    (Route<dynamic> route) => false,
-                  );
-                },
-              ),
-              (
-                title: 'IZMIJENI PODATKE TVRTKE',
-                onTap: () {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                      builder: (context) => const IgRouteMerchantDataEntry(),
-                    ),
-                    (Route<dynamic> route) => false,
-                  );
-                },
-              ),
-            }.indexed)
+            for (final action in _actions.indexed)
               TextButton(
                 child: Text(
                   action.$2.title,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
+                    fontSize: 16,
                   ),
                 ),
                 onPressed: action.$2.onTap,
@@ -294,68 +170,139 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 80),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
           children: [
-            Text(
-              'U donja polja upisujete podatke kupca, te usluga ili artikala koji će biti prikazani na generiranom računu.\n',
-              style: TextStyle(
-                color: Colors.grey.shade700,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Osnovni podatci',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+                Tooltip(
+                  child: Icon(
+                    Icons.help,
+                    size: 22,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  textStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontSize: MediaQuery.of(context).size.width < 1000 ? null : 16,
+                      ),
+                  message: 'Sekcija sadrži informativne podatke o tvrtci, te nekoliko polja sa mogučnošću uređivanja sadržaja.\n\n'
+                      '"Način plaćanja" i "Model plaćanja" su informacije koje se prema potrebi mogu uređivati, '
+                      'te im se zadana vrijednost odnosi na bankovnu uplatu.\n\n'
+                      'Polja za redni broj računa, broj poslovnog prostora, i broj naplatnog uređaj su obavezna, '
+                      'dok su ostala polja opcionalna.',
+                ),
+              ],
             ),
+            const Divider(),
+            const SizedBox(height: 10),
             MediaQuery.of(context).size.width < 1000
                 ? Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      for (final merchantInfo in <({String label, String value})>{
-                        (
-                          label: 'Naziv tvrtke',
-                          value: IgServiceCacheManager.merchantData?.name ?? 'N/A',
-                        ),
-                        (
-                          label: 'Email adresa',
-                          value: IgServiceCacheManager.merchantData?.email ?? 'N/A',
-                        ),
-                        (
-                          label: 'Adresa tvrtke',
-                          value: IgServiceCacheManager.merchantData?.address ?? 'N/A',
-                        ),
-                        (
-                          label: 'OIB',
-                          value: IgServiceCacheManager.merchantData?.oib ?? 'N/A',
-                        ),
-                        (
-                          label: 'MB',
-                          value: IgServiceCacheManager.merchantData?.mb ?? 'N/A',
-                        ),
-                        (
-                          label: 'IBAN',
-                          value: IgServiceCacheManager.merchantData?.iban ?? 'N/A',
-                        ),
-                        (
-                          label: 'Telefonski broj',
-                          value: IgServiceCacheManager.merchantData?.phoneNumber ?? 'N/A',
-                        ),
-                      })
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 2),
-                          child: Text.rich(
-                            TextSpan(
-                              text: '${merchantInfo.label}: ',
-                              style: TextStyle(
-                                color: Colors.grey.shade700,
-                              ),
-                              children: [
-                                TextSpan(
-                                  text: merchantInfo.value,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black,
-                                  ),
+                      if (IgServiceCacheManager.merchantData != null)
+                        for (final merchantInfo in IgServiceCacheManager.merchantData!.formattedInfo)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Text.rich(
+                              TextSpan(
+                                text: '${merchantInfo.label}: ',
+                                style: TextStyle(
+                                  color: Colors.grey.shade700,
                                 ),
-                              ],
+                                children: [
+                                  TextSpan(
+                                    text: merchantInfo.value,
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          children: [
+                            const Text('Način plaćanja:  '),
+                            Flexible(
+                              child: EditableText(
+                                controller: _paymentMethodTextController,
+                                focusNode: _paymentMethodFocusNode,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                cursorColor: Colors.black,
+                                backgroundCursorColor: Colors.black,
+                              ),
+                            ),
+                          ],
                         ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          children: [
+                            const Text('Model plaćanja:  '),
+                            Flexible(
+                              child: EditableText(
+                                controller: _paymentModelTextController,
+                                focusNode: _paymentModelFocusNode,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                cursorColor: Colors.black,
+                                backgroundCursorColor: Colors.black,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _paymentIdTextController,
+                        decoration: const InputDecoration(
+                          label: Text(
+                            'Redni broj računa',
+                          ),
+                        ),
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        keyboardType: TextInputType.number,
+                        validator: (input) => IgServiceInputValidation.number(input),
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _paymentLocationIdTextController,
+                        decoration: const InputDecoration(
+                          label: Text(
+                            'Poslovni prostor',
+                          ),
+                        ),
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        keyboardType: TextInputType.number,
+                        validator: (input) => IgServiceInputValidation.number(input),
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _paymentRegisterIdTextController,
+                        decoration: const InputDecoration(
+                          label: Text(
+                            'Naplatni uređaj',
+                          ),
+                        ),
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        keyboardType: TextInputType.number,
+                        validator: (input) => IgServiceInputValidation.number(input),
+                      ),
                       const SizedBox(height: 10),
                       DropdownMenu(
                         controller: _clientNameTextController,
@@ -387,6 +334,7 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                             'OIB klijenta (opcionalno)',
                           ),
                         ),
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
                         keyboardType: TextInputType.number,
                         validator: (input) => input?.isNotEmpty == true ? IgServiceInputValidation.oib(input) : null,
                       ),
@@ -398,6 +346,7 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                             'Adresa klijenta (opcionalno)',
                           ),
                         ),
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
                         keyboardType: TextInputType.streetAddress,
                         validator: (input) => input?.isNotEmpty == true ? IgServiceInputValidation.address(input) : null,
                       ),
@@ -409,56 +358,66 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            for (final merchantInfo in <({String label, String value})>{
-                              (
-                                label: 'Naziv tvrtke',
-                                value: IgServiceCacheManager.merchantData?.name ?? 'N/A',
-                              ),
-                              (
-                                label: 'Email adresa',
-                                value: IgServiceCacheManager.merchantData?.email ?? 'N/A',
-                              ),
-                              (
-                                label: 'Adresa tvrtke',
-                                value: IgServiceCacheManager.merchantData?.address ?? 'N/A',
-                              ),
-                              (
-                                label: 'OIB',
-                                value: IgServiceCacheManager.merchantData?.oib ?? 'N/A',
-                              ),
-                              (
-                                label: 'MB',
-                                value: IgServiceCacheManager.merchantData?.mb ?? 'N/A',
-                              ),
-                              (
-                                label: 'IBAN',
-                                value: IgServiceCacheManager.merchantData?.iban ?? 'N/A',
-                              ),
-                              (
-                                label: 'Telefonski broj',
-                                value: IgServiceCacheManager.merchantData?.phoneNumber ?? 'N/A',
-                              ),
-                            })
-                              Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 2),
-                                child: Text.rich(
-                                  TextSpan(
-                                    text: '${merchantInfo.label}: ',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade700,
-                                    ),
-                                    children: [
-                                      TextSpan(
-                                        text: merchantInfo.value,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black,
-                                        ),
+                            if (IgServiceCacheManager.merchantData != null)
+                              for (final merchantInfo in IgServiceCacheManager.merchantData!.formattedInfo)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 2),
+                                  child: Text.rich(
+                                    TextSpan(
+                                      text: '${merchantInfo.label}: ',
+                                      style: TextStyle(
+                                        color: Colors.grey.shade700,
                                       ),
-                                    ],
+                                      children: [
+                                        TextSpan(
+                                          text: merchantInfo.value,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Theme.of(context).textTheme.bodyMedium?.color,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Row(
+                                children: [
+                                  const Text('Način plaćanja:  '),
+                                  Flexible(
+                                    child: EditableText(
+                                      controller: _paymentMethodTextController,
+                                      focusNode: _paymentMethodFocusNode,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      cursorColor: Colors.black,
+                                      backgroundCursorColor: Colors.black,
+                                    ),
+                                  ),
+                                ],
                               ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Row(
+                                children: [
+                                  const Text('Model plaćanja:  '),
+                                  Flexible(
+                                    child: EditableText(
+                                      controller: _paymentModelTextController,
+                                      focusNode: _paymentModelFocusNode,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      cursorColor: Colors.black,
+                                      backgroundCursorColor: Colors.black,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -467,6 +426,53 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _paymentIdTextController,
+                                    decoration: const InputDecoration(
+                                      label: Text(
+                                        'Redni broj računa',
+                                      ),
+                                    ),
+                                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                                    keyboardType: TextInputType.number,
+                                    validator: (input) => IgServiceInputValidation.number(input),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _paymentLocationIdTextController,
+                                    decoration: const InputDecoration(
+                                      label: Text(
+                                        'Poslovni prostor',
+                                      ),
+                                    ),
+                                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                                    keyboardType: TextInputType.number,
+                                    validator: (input) => IgServiceInputValidation.number(input),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _paymentRegisterIdTextController,
+                                    decoration: const InputDecoration(
+                                      label: Text(
+                                        'Naplatni uređaj',
+                                      ),
+                                    ),
+                                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                                    keyboardType: TextInputType.number,
+                                    validator: (input) => IgServiceInputValidation.number(input),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
                             DropdownMenu(
                               controller: _clientNameTextController,
                               label: const Text(
@@ -497,6 +503,7 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                                   'OIB klijenta (opcionalno)',
                                 ),
                               ),
+                              autovalidateMode: AutovalidateMode.onUserInteraction,
                               keyboardType: TextInputType.number,
                               validator: (input) => input?.isNotEmpty == true ? IgServiceInputValidation.oib(input) : null,
                             ),
@@ -508,6 +515,7 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                                   'Adresa klijenta (opcionalno)',
                                 ),
                               ),
+                              autovalidateMode: AutovalidateMode.onUserInteraction,
                               keyboardType: TextInputType.streetAddress,
                               validator: (input) => input?.isNotEmpty == true ? IgServiceInputValidation.address(input) : null,
                             ),
@@ -517,157 +525,37 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                     ],
                   ),
             Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: Text(
-                'Za svaki proizvod ili uslugu prikazanu na računu su definirana 4 obavezna polja:\n\n'
-                '- Naziv proizvoda ili usluge (npr. "Zavjese")\n'
-                '- Količina (npr. "2")\n'
-                '- Mjerna jedinica (npr. "Kom")\n'
-                '- Pojedinačna (ne ukupna) cijena proizvoda u EUR, npr. "10.50")\n\n'
-                'Nakon unosa svih vrijednosti, stisnite na "Dodaj novi zapis" tipku kako bi se napravio zapis.',
-                style: TextStyle(
-                  color: Colors.grey.shade700,
-                ),
+              padding: const EdgeInsets.only(top: 20),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Artikli',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                  Tooltip(
+                    child: Icon(
+                      Icons.help,
+                      size: 22,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    padding: const EdgeInsets.all(12),
+                    textStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontSize: MediaQuery.of(context).size.width < 1000 ? null : 16,
+                        ),
+                    message: 'U ovu sekciju unosite popis artikala za ispis na računu.\n\n'
+                        'Nakon unosa informacija u donja polja, potrebno je potvrditi unos pritiskom na tipku "Dodaj stavku"'
+                        'kako bi se informacija zapisala.',
+                  ),
+                ],
               ),
             ),
-            if (_invoiceItems.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (MediaQuery.of(context).size.width < 1000)
-                      for (var invoiceItem in _invoiceItems.indexed) ...[
-                        if (invoiceItem.$1 != 0) const Divider(),
-                        for (final info in <({String label, String value})>{
-                          (
-                            label: 'Naziv',
-                            value: invoiceItem.$2.name,
-                          ),
-                          (
-                            label: 'Količina',
-                            value: invoiceItem.$2.amount.toString(),
-                          ),
-                          (
-                            label: 'Mj. jedinica',
-                            value: invoiceItem.$2.measure,
-                          ),
-                          (
-                            label: 'Cijena proizvoda u EUR',
-                            value: '${invoiceItem.$2.price} EUR',
-                          ),
-                        }.indexed) ...[
-                          if (info.$1 == 0) const SizedBox(height: 10),
-                          Text.rich(
-                            TextSpan(
-                              text: '${info.$2.label}: ',
-                              style: TextStyle(
-                                color: Colors.grey.shade700,
-                              ),
-                              children: [
-                                TextSpan(
-                                  text: info.$2.value,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 6),
-                        OutlinedButton(
-                          child: const Text('UKLONI'),
-                          onPressed: () {
-                            setState(() => _invoiceItems.remove(invoiceItem.$2));
-                          },
-                        ),
-                      ]
-                    else
-                      for (var invoiceItem in _invoiceItems.indexed) ...[
-                        if (invoiceItem.$1 != 0) const Divider(),
-                        Row(
-                          children: [
-                            for (final info in <({String label, String value})>{
-                              (
-                                label: 'Naziv',
-                                value: invoiceItem.$2.name,
-                              ),
-                              (
-                                label: 'Količina',
-                                value: invoiceItem.$2.amount.toString(),
-                              ),
-                              (
-                                label: 'Mjerna jedinica',
-                                value: invoiceItem.$2.measure,
-                              ),
-                              (
-                                label: 'Cijena proizvoda u EUR',
-                                value: '${invoiceItem.$2.price} EUR',
-                              ),
-                            }.indexed)
-                              if (info.$1 == 0)
-                                SizedBox(
-                                  width: MediaQuery.of(context).size.width / 2.5,
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text.rich(
-                                        TextSpan(
-                                          text: '${info.$2.label}: ',
-                                          style: TextStyle(
-                                            color: Colors.grey.shade700,
-                                          ),
-                                          children: [
-                                            TextSpan(
-                                              text: info.$2.value,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.black,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      OutlinedButton(
-                                        child: const Text('UKLONI'),
-                                        onPressed: () {
-                                          setState(() => _invoiceItems.remove(invoiceItem.$2));
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              else ...[
-                                if (info.$1 != 2) const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text.rich(
-                                    TextSpan(
-                                      text: '${info.$2.label}: ',
-                                      style: TextStyle(
-                                        color: Colors.grey.shade700,
-                                      ),
-                                      children: [
-                                        TextSpan(
-                                          text: info.$2.value,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.black,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                if (info.$1 != 3) const SizedBox(width: 10),
-                              ],
-                          ],
-                        ),
-                      ],
-                  ],
-                ),
-              ),
+            const Divider(),
             const SizedBox(height: 16),
             MediaQuery.of(context).size.width < 1000
                 ? Column(
@@ -698,6 +586,7 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                         decoration: const InputDecoration(
                           label: Text('Količina'),
                         ),
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       ),
                       const SizedBox(height: 10),
@@ -708,10 +597,10 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                         width: MediaQuery.of(context).size.width - 32,
                         dropdownMenuEntries: [
                           for (final measure in <String>{
-                            'KG',
-                            'L',
-                            'Kom',
-                            'm',
+                            'KILOGRAM',
+                            'LITRA',
+                            'KOMAD',
+                            'METAR',
                           }..addAll(IgServiceCacheManager.invoiceItems.map((invoiceItem) => invoiceItem.measure)))
                             DropdownMenuEntry(
                               value: measure,
@@ -725,6 +614,7 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                         decoration: const InputDecoration(
                           label: Text('Cijena proizvoda u EUR'),
                         ),
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       ),
                     ],
@@ -758,6 +648,7 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                           decoration: const InputDecoration(
                             label: Text('Količina'),
                           ),
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
                           keyboardType: TextInputType.number,
                         ),
                       ),
@@ -769,10 +660,10 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                         width: (MediaQuery.of(context).size.width - (MediaQuery.of(context).size.width / 2.5) - 30) / 3,
                         dropdownMenuEntries: [
                           for (final measure in <String>{
-                            'KG',
-                            'L',
-                            'Kom',
-                            'm',
+                            'KILOGRAM',
+                            'LITRA',
+                            'KOMAD',
+                            'METAR',
                           }..addAll(IgServiceCacheManager.invoiceItems.map((invoiceItem) => invoiceItem.measure)))
                             DropdownMenuEntry(
                               value: measure,
@@ -787,6 +678,7 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                           decoration: const InputDecoration(
                             label: Text('Cijena proizvoda u EUR'),
                           ),
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         ),
                       ),
@@ -813,33 +705,16 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                           color: Theme.of(context).primaryColor,
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              DecoratedBox(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.green.shade200,
-                                ),
-                                child: const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: Center(
-                                    child: Icon(
-                                      Icons.add,
-                                      color: Colors.white,
-                                      size: 14,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const Text(
-                                '  Dodaj novi zapis',
+                              Text(
+                                '➕   Dodaj stavku',
                                 style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 16,
                                 ),
                               ),
                             ],
@@ -859,16 +734,15 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                           });
                           return;
                         }
-                        if (_invoiceItemAmountTextController.text.trim().isEmpty ||
-                            num.tryParse(_invoiceItemAmountTextController.text.trim()) == null) {
+                        final parsedAmountNumber = num.tryParse(_invoiceItemAmountTextController.text.replaceAll(',', '.').trim());
+                        if (parsedAmountNumber == null || parsedAmountNumber < 0) {
                           setThisState(() {
                             _invoiceItemValidationError =
                                 'Molimo provjerite unesenu količinu. Količina može biti cijeli ili decimalni broj.';
                           });
                           return;
                         }
-                        if (_invoiceItemPriceTextController.text.trim().isEmpty ||
-                            num.tryParse(_invoiceItemPriceTextController.text.trim()) == null) {
+                        if (num.tryParse(_invoiceItemPriceTextController.text.replaceAll(',', '.').trim()) == null) {
                           setThisState(() {
                             _invoiceItemValidationError = 'Molimo provjerite unesenu cijenu. Cijena može biti cijeli ili decimalni broj.';
                           });
@@ -878,8 +752,8 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                           IgModelInvoiceItem(
                             name: _invoiceItemNameTextController.text.trim(),
                             measure: _invoiceItemMeasureTextController.text.trim(),
-                            amount: num.parse(_invoiceItemAmountTextController.text.trim()),
-                            price: num.parse(_invoiceItemPriceTextController.text.trim()),
+                            amount: num.parse(_invoiceItemAmountTextController.text.replaceAll(',', '.').trim()),
+                            price: num.parse(_invoiceItemPriceTextController.text.replaceAll(',', '.').trim()),
                           ),
                         );
                         _invoiceItemNameTextController.clear();
@@ -893,105 +767,266 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                 );
               },
             ),
-            const SizedBox(height: 20),
-            Text(
-              'Donja polja definiraju način plaćanja, te šifru namjene i model plaćanja ukoliko se plaćanje vodi bankovnom transakcijom.\n\n'
-              'Način plaćanja i šifra namjene su polja u koje možete unijeti bilo koju vrijednost.\n\n'
-              'Šifra namjene se automatski popunjava trenutnim vremenom u formatu koji kompjuter prepoznaje, '
-              'stoga je šifra namjene uvijek unikatna za svaki račun, te se iz nje može iščitati vrijeme izdavanja računa.',
-              style: TextStyle(
-                color: Colors.grey.shade700,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                const Text('Način plaćanja:  '),
-                Flexible(
-                  child: TextField(
-                    controller: _paymentMethodTextController,
-                  ),
-                ),
-              ],
-            ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                const Text('Šifra namjene:  '),
-                Flexible(
-                  child: TextField(
-                    controller: _paymentCodeTextController,
+            if (_invoiceItems.isNotEmpty)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 14, bottom: 18),
+                    child: Row(
+                      children: [
+                        const Text(
+                          'Ukupno: ',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Builder(
+                          builder: (context) {
+                            num productPriceSum = 0;
+                            for (var item in _invoiceItems) {
+                              productPriceSum += item.amount * item.price;
+                            }
+                            return Text(
+                              '${productPriceSum.toStringAsFixed(2)} EUR' +
+                                  (DateTime.now().year < 2024 ? ' - ${(productPriceSum * 7.5345).toStringAsFixed(2)} HRK' : ''),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                const Text('Model plaćanja:  '),
-                DropdownMenu(
-                  controller: _paymentModelTextController,
-                  inputDecorationTheme: Theme.of(context).inputDecorationTheme,
-                  dropdownMenuEntries: [
-                    for (int i = 0; i < 100; i++)
-                      DropdownMenuEntry(
-                        value: 'HR' + (i < 10 ? '0$i' : '$i'),
-                        label: 'HR' + (i < 10 ? '0$i' : '$i'),
+                  if (MediaQuery.of(context).size.width < 1000)
+                    for (var invoiceItem in _invoiceItems.indexed) ...[
+                      if (invoiceItem.$1 != 0) const Divider(),
+                      for (final info in <({String label, String value})>{
+                        (
+                          label: 'Naziv',
+                          value: invoiceItem.$2.name,
+                        ),
+                        (
+                          label: 'Količina',
+                          value: invoiceItem.$2.amount.toString(),
+                        ),
+                        (
+                          label: 'Mj. jedinica',
+                          value: invoiceItem.$2.measure,
+                        ),
+                        (
+                          label: 'Cijena u EUR',
+                          value: invoiceItem.$2.amount == 1
+                              ? '${invoiceItem.$2.price.toStringAsFixed(2)} EUR'
+                              : '${(invoiceItem.$2.price * invoiceItem.$2.amount).toStringAsFixed(2)} EUR '
+                                  '(${invoiceItem.$2.price.toStringAsFixed(2)}€ x ${invoiceItem.$2.amount})',
+                        ),
+                      }.indexed) ...[
+                        if (info.$1 == 0) const SizedBox(height: 10),
+                        info.$1 == 0
+                            ? Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      info.$2.value,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                                  OutlinedButton(
+                                    child: const Text('UKLONI'),
+                                    onPressed: () {
+                                      setState(() => _invoiceItems.remove(invoiceItem.$2));
+                                    },
+                                  ),
+                                ],
+                              )
+                            : Text.rich(
+                                TextSpan(
+                                  text: '${info.$2.label}: ',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade700,
+                                  ),
+                                  children: [
+                                    TextSpan(
+                                      text: info.$2.value,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Theme.of(context).textTheme.bodyMedium?.color,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                      ],
+                    ]
+                  else ...[
+                    for (var invoiceItem in _invoiceItems.indexed)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          children: [
+                            for (final info in <({String label, String value})>{
+                              (
+                                label: 'Naziv',
+                                value: invoiceItem.$2.name,
+                              ),
+                              (
+                                label: 'Količina',
+                                value: invoiceItem.$2.amount.toString(),
+                              ),
+                              (
+                                label: 'Mjerna jedinica',
+                                value: invoiceItem.$2.measure,
+                              ),
+                              (
+                                label: 'Cijena u EUR',
+                                value: invoiceItem.$2.amount == 1
+                                    ? '${invoiceItem.$2.price.toStringAsFixed(2)} EUR'
+                                    : '${(invoiceItem.$2.price * invoiceItem.$2.amount).toStringAsFixed(2)} EUR '
+                                        '(${invoiceItem.$2.price.toStringAsFixed(2)}€ x ${invoiceItem.$2.amount})',
+                              ),
+                            }.indexed)
+                              if (info.$1 == 0)
+                                DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      width: .5,
+                                    ),
+                                  ),
+                                  child: SizedBox(
+                                    width: MediaQuery.of(context).size.width / 2.5,
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            info.$2.value,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                          OutlinedButton(
+                                            child: const Text('UKLONI'),
+                                            onPressed: () {
+                                              setState(() => _invoiceItems.remove(invoiceItem.$2));
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              else ...[
+                                if (info.$1 != 2) const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text.rich(
+                                    TextSpan(
+                                      text: '${info.$2.label}: ',
+                                      style: TextStyle(
+                                        color: Colors.grey.shade700,
+                                      ),
+                                      children: [
+                                        TextSpan(
+                                          text: info.$2.value,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Theme.of(context).textTheme.bodyMedium?.color,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                if (info.$1 != 3) const SizedBox(width: 10),
+                              ],
+                          ],
+                        ),
                       ),
                   ],
-                ),
-              ],
-            ),
+                ],
+              ),
           ],
         ),
       ),
-      floatingActionButton: StatefulBuilder(
-        builder: (context, setThisState) {
-          return FloatingActionButton.extended(
-            label: _generatingInvoice
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(),
-                  )
-                : const Text(
-                    'GENERIRAJ RAČUN',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          for (int i = 0; i < 3; i++)
+            i == 1
+                ? const SizedBox(width: 16)
+                : StatefulBuilder(
+                    builder: (context, setThisState) {
+                      return FloatingActionButton.extended(
+                        heroTag: null,
+                        label: _generatingInvoice
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(),
+                              )
+                            : Text(
+                                'IZRADI ${i == 0 ? 'PONUDU' : 'RAČUN'}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                        onPressed: _generatingInvoice
+                            ? null
+                            : () async {
+                                if (i == 0 || _formKey.currentState?.validate() == true) {
+                                  if (_invoiceItems.isEmpty) {
+                                    setState(() {
+                                      _invoiceItemValidationError =
+                                          'Molimo unesite bar jednu vrijednost i stisnite tipku "Dodaj novi zapis".';
+                                    });
+                                    return;
+                                  }
+                                  setThisState(() => _generatingInvoice = true);
+                                  await IgServicePdfGenerator.generatePdfInvoice(
+                                    IgModelInvoice(
+                                      paymentId: '${_paymentIdTextController.text.trim()}/'
+                                          '${_paymentLocationIdTextController.text.trim()}/'
+                                          '${_paymentRegisterIdTextController.text.trim()}',
+                                      time: DateTime.now(),
+                                      paymentMethod: _paymentMethodTextController.text.trim(),
+                                      paymentModel: _paymentModelTextController.text.trim(),
+                                      invoiceItems: _invoiceItems,
+                                      clientInfo: IgModelSaleClient(
+                                        name: _clientNameTextController.text.trim(),
+                                        oib: _clientOibTextController.text.trim().isEmpty ? null : _clientOibTextController.text.trim(),
+                                        address: _clientAddressTextController.text.trim().isEmpty
+                                            ? null
+                                            : _clientAddressTextController.text.trim(),
+                                      ),
+                                    ),
+                                    offerOnly: i == 0,
+                                  );
+                                  setThisState(() => _generatingInvoice = false);
+                                }
+                              },
+                      );
+                    },
                   ),
-            icon: _generatingInvoice ? null : const Icon(Icons.file_download),
-            onPressed: _generatingInvoice
-                ? null
-                : () async {
-                    if (_invoiceItems.isEmpty) {
-                      setState(() {
-                        _invoiceItemValidationError = 'Molimo unesite bar jednu vrijednost i stisnite tipku "Dodaj novi zapis".';
-                      });
-                      return;
-                    }
-                    setThisState(() => _generatingInvoice = true);
-                    await IgServicePdfGenerator.generatePdfInvoice(
-                      paymentId: _paymentCodeTextController.text.trim(),
-                      paymentMethod: _paymentMethodTextController.text.trim(),
-                      paymentModel: _paymentModelTextController.text.trim(),
-                      invoiceItems: _invoiceItems,
-                      clientInfo: IgModelSaleClient(
-                        name: _clientNameTextController.text.trim(),
-                        oib: _clientOibTextController.text.trim().isEmpty ? null : _clientOibTextController.text.trim(),
-                        address: _clientAddressTextController.text.trim().isEmpty ? null : _clientAddressTextController.text.trim(),
-                      ),
-                    );
-                    setThisState(() => _generatingInvoice = false);
-                  },
-          );
-        },
+        ],
       ),
     );
   }
 
   @override
   void dispose() {
+    _paymentIdTextController.dispose();
+    _paymentLocationIdTextController.dispose();
+    _paymentRegisterIdTextController.dispose();
     _clientNameTextController.dispose();
     _clientOibTextController.dispose();
     _clientAddressTextController.dispose();
@@ -1001,7 +1036,8 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
     _invoiceItemPriceTextController.dispose();
     _paymentMethodTextController.dispose();
     _paymentModelTextController.dispose();
-    _paymentCodeTextController.dispose();
+    _paymentMethodFocusNode.dispose();
+    _paymentModelFocusNode.dispose();
     super.dispose();
   }
 }
