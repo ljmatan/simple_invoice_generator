@@ -170,7 +170,7 @@ class _IgRouteClientInfoEntryState extends State<IgRouteClientInfoEntry> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    offset: Offset(0, 7),
+                    offset: Offset(0, -7),
                     blurRadius: 15,
                     color: Colors.black12,
                   ),

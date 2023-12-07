@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:simple_invoice_generator/models/model_invoice.dart';
 import 'package:simple_invoice_generator/models/model_invoice_item.dart';
 import 'package:simple_invoice_generator/models/model_sale_client.dart';
-import 'package:simple_invoice_generator/view/routes/route_client_info_entry.dart';
+import 'package:simple_invoice_generator/view/dialogs/dialog_cookies.dart';
 import 'package:simple_invoice_generator/view/routes/route_data_overview.dart';
-import 'package:simple_invoice_generator/view/routes/route_invoice_item_entry.dart';
 import 'package:simple_invoice_generator/view/routes/route_merchant_data_entry.dart';
 import 'package:simple_invoice_generator/services/service_cache_manager.dart';
 import 'package:simple_invoice_generator/services/service_input_validation.dart';
@@ -20,60 +19,6 @@ class IgRouteInvoiceGenerator extends StatefulWidget {
 class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
   late Set<({String title, void Function() onTap})> _actions;
 
-  @override
-  void initState() {
-    super.initState();
-    _actions = <({String title, void Function() onTap})>{
-      if (IgServiceCacheManager.cookieConsentApproved)
-        (
-          title: 'PREGLED PODATAKA',
-          onTap: () {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(
-                builder: (context) => const IgRouteDataOverview(),
-              ),
-              (Route<dynamic> route) => false,
-            );
-          },
-        ),
-      if (IgServiceCacheManager.cookieConsentApproved)
-        (
-          title: 'DODAJ ARTIKL',
-          onTap: () {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(
-                builder: (context) => const IgRouteInvoiceItemEntry(),
-              ),
-              (Route<dynamic> route) => false,
-            );
-          },
-        ),
-      if (IgServiceCacheManager.cookieConsentApproved)
-        (
-          title: 'DODAJ KLIJENTA',
-          onTap: () {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(
-                builder: (context) => const IgRouteClientInfoEntry(),
-              ),
-              (Route<dynamic> route) => false,
-            );
-          },
-        ),
-      (
-        title: 'IZMIJENI PODATKE TVRTKE',
-        onTap: () {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(
-              builder: (context) => const IgRouteMerchantDataEntry(),
-            ),
-            (Route<dynamic> route) => false,
-          );
-        },
-      ),
-    };
-  }
-
   final _formKey = GlobalKey<FormState>();
 
   final _paymentIdTextController = TextEditingController(),
@@ -88,9 +33,65 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
       _invoiceItemMeasureTextController = TextEditingController(),
       _invoiceItemPriceTextController = TextEditingController();
 
-  final _paymentMethodTextController = TextEditingController(text: 'Transakcija na bankovni račun'),
-      _paymentModelTextController = TextEditingController(text: 'HR99');
+  final _paymentMethodTextController = TextEditingController(
+        text: IgServiceCacheManager.instance.getString('paymentMethod') ?? 'Transakcija na bankovni račun',
+      ),
+      _paymentModelTextController = TextEditingController(
+        text: IgServiceCacheManager.instance.getString('paymentModel') ?? 'HR99',
+      );
   final _paymentMethodFocusNode = FocusNode(), _paymentModelFocusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _actions = <({String title, void Function() onTap})>{
+      (
+        title: 'PRAVILA PRIVATNOSTI',
+        onTap: () {
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) {
+              showDialog(
+                context: context,
+                builder: (context) {
+                  return const IgDialogCookieConsent();
+                },
+              );
+            },
+          );
+        },
+      ),
+      if (IgServiceCacheManager.cookieConsentApproved)
+        (
+          title: 'PREGLED PODATAKA',
+          onTap: () {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (context) => const IgRouteDataOverview(),
+              ),
+              (Route<dynamic> route) => false,
+            );
+          },
+        )
+      else
+        (
+          title: 'IZMIJENI PODATKE TVRTKE',
+          onTap: () {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (context) => const IgRouteMerchantDataEntry(),
+              ),
+              (Route<dynamic> route) => false,
+            );
+          },
+        ),
+    };
+    _paymentMethodTextController.addListener(() {
+      IgServiceCacheManager.instance.setString('paymentMethod', _paymentMethodTextController.text.trim());
+    });
+    _paymentModelTextController.addListener(() {
+      IgServiceCacheManager.instance.setString('paymentModel', _paymentModelTextController.text.trim());
+    });
+  }
 
   String? _invoiceItemValidationError;
 
@@ -99,6 +100,8 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
   bool _generatingInvoice = false;
 
   final _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  final _scrollController = ScrollController();
 
   @override
   Widget build(BuildContext context) {
@@ -170,6 +173,7 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
       body: Form(
         key: _formKey,
         child: ListView(
+          controller: _scrollController,
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
           children: [
             Row(
@@ -183,7 +187,7 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                 Tooltip(
                   child: Icon(
                     Icons.help,
-                    size: 22,
+                    size: 26,
                     color: Theme.of(context).primaryColor,
                   ),
                   decoration: BoxDecoration(
@@ -195,7 +199,7 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                         fontSize: MediaQuery.of(context).size.width < 1000 ? null : 16,
                       ),
                   message: 'Sekcija sadrži informativne podatke o tvrtci, te nekoliko polja sa mogučnošću uređivanja sadržaja.\n\n'
-                      '"Način plaćanja" i "Model plaćanja" su informacije koje se prema potrebi mogu uređivati, '
+                      '"Način plaćanja" i "Model plaćanja" su informacije koje se prema potrebi mogu uređivati ili obrisati, '
                       'te im se zadana vrijednost odnosi na bankovnu uplatu.\n\n'
                       'Polja za redni broj računa, broj poslovnog prostora, i broj naplatnog uređaj su obavezna, '
                       'dok su ostala polja opcionalna.',
@@ -389,8 +393,9 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                                     child: EditableText(
                                       controller: _paymentMethodTextController,
                                       focusNode: _paymentMethodFocusNode,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontWeight: FontWeight.bold,
+                                        background: Paint()..color = Colors.grey.shade100,
                                       ),
                                       cursorColor: Colors.black,
                                       backgroundCursorColor: Colors.black,
@@ -408,8 +413,9 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                                     child: EditableText(
                                       controller: _paymentModelTextController,
                                       focusNode: _paymentModelFocusNode,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontWeight: FontWeight.bold,
+                                        background: Paint()..color = Colors.grey.shade100,
                                       ),
                                       cursorColor: Colors.black,
                                       backgroundCursorColor: Colors.black,
@@ -537,7 +543,7 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                   Tooltip(
                     child: Icon(
                       Icons.help,
-                      size: 22,
+                      size: 26,
                       color: Theme.of(context).primaryColor,
                     ),
                     decoration: BoxDecoration(
@@ -711,7 +717,7 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                '➕   Dodaj stavku',
+                                '➕   DODAJ STAVKU',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w900,
                                   fontSize: 16,
@@ -831,16 +837,33 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                             ? Row(
                                 children: [
                                   Expanded(
-                                    child: Text(
-                                      info.$2.value,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
+                                    child: Text.rich(
+                                      TextSpan(
+                                        text: '${info.$1 + 1}. ',
+                                        style: TextStyle(
+                                          color: Colors.grey.shade700,
+                                          fontSize: 16,
+                                        ),
+                                        children: [
+                                          TextSpan(
+                                            text: info.$2.value,
+                                            style: TextStyle(
+                                              color: Theme.of(context).textTheme.bodyMedium?.color,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          TextSpan(text: ' ${invoiceItem.$2.price.toStringAsFixed(2)} EUR'),
+                                        ],
                                       ),
                                     ),
                                   ),
-                                  OutlinedButton(
-                                    child: const Text('UKLONI'),
+                                  TextButton(
+                                    child: const Text(
+                                      'UKLONI',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                     onPressed: () {
                                       setState(() => _invoiceItems.remove(invoiceItem.$2));
                                     },
@@ -904,19 +927,36 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                                   child: SizedBox(
                                     width: MediaQuery.of(context).size.width / 2.5,
                                     child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
                                       child: Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Text(
-                                            info.$2.value,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
+                                          Text.rich(
+                                            TextSpan(
+                                              text: '${info.$1 + 1}. ',
+                                              style: TextStyle(
+                                                color: Colors.grey.shade700,
+                                                fontSize: 16,
+                                              ),
+                                              children: [
+                                                TextSpan(
+                                                  text: info.$2.value,
+                                                  style: TextStyle(
+                                                    color: Theme.of(context).textTheme.bodyMedium?.color,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                TextSpan(text: ' ${invoiceItem.$2.price.toStringAsFixed(2)} EUR'),
+                                              ],
                                             ),
                                           ),
-                                          OutlinedButton(
-                                            child: const Text('UKLONI'),
+                                          TextButton(
+                                            child: const Text(
+                                              'UKLONI',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
                                             onPressed: () {
                                               setState(() => _invoiceItems.remove(invoiceItem.$2));
                                             },
@@ -977,7 +1017,9 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                             : Text(
                                 'IZRADI ${i == 0 ? 'PONUDU' : 'RAČUN'}',
                                 style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight: FontWeight.w900,
+                                  decoration: TextDecoration.underline,
+                                  decorationColor: Colors.black45,
                                 ),
                               ),
                         onPressed: _generatingInvoice
@@ -985,6 +1027,7 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                             : () async {
                                 if (i == 0 || _formKey.currentState?.validate() == true) {
                                   if (_invoiceItems.isEmpty) {
+                                    _scrollController.jumpTo(0);
                                     setState(() {
                                       _invoiceItemValidationError =
                                           'Molimo unesite bar jednu vrijednost i stisnite tipku "Dodaj novi zapis".';
@@ -1012,6 +1055,8 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
                                     offerOnly: i == 0,
                                   );
                                   setThisState(() => _generatingInvoice = false);
+                                } else {
+                                  _scrollController.jumpTo(0);
                                 }
                               },
                       );
@@ -1038,6 +1083,7 @@ class _IgRouteInvoiceGeneratorState extends State<IgRouteInvoiceGenerator> {
     _paymentModelTextController.dispose();
     _paymentMethodFocusNode.dispose();
     _paymentModelFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 }

@@ -12,6 +12,7 @@ import 'package:simple_invoice_generator/services/service_cache_manager.dart';
 import 'package:simple_invoice_generator/view/routes/route_client_info_entry.dart';
 import 'package:simple_invoice_generator/view/routes/route_invoice_generator.dart';
 import 'package:simple_invoice_generator/view/routes/route_invoice_item_entry.dart';
+import 'package:simple_invoice_generator/view/routes/route_merchant_data_entry.dart';
 
 class IgRouteDataOverview extends StatefulWidget {
   const IgRouteDataOverview({super.key});
@@ -33,9 +34,8 @@ class _IgRouteDataOverviewState extends State<IgRouteDataOverview> {
           final fileReader = html.FileReader();
           fileReader.onLoad.listen(
             (e) async {
-              final fileBytes = Uint8List.fromList(fileReader.result as List<int>);
-              String fileContents = String.fromCharCodes(fileBytes);
-              final Map<String, dynamic> importedData = jsonDecode(fileContents);
+              final fileBytes = utf8.decode(Uint8List.fromList(fileReader.result as List<int>));
+              final Map<String, dynamic> importedData = jsonDecode(fileBytes);
               final companyInfoJson = importedData['companyInfo'];
               if (companyInfoJson != null) {
                 try {
@@ -143,37 +143,15 @@ class _IgRouteDataOverviewState extends State<IgRouteDataOverview> {
     super.initState();
     _actions = {
       (
-        label: 'IMPORT PODATAKA',
+        label: 'IMPORT',
         onTap: () async => await _importData(),
       ),
       (
-        label: 'EXPORT PODATAKA',
+        label: 'EXPORT',
         onTap: () async => await _exportData(),
       ),
       (
-        label: 'DODAJ ARTIKL',
-        onTap: () {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(
-              builder: (context) => const IgRouteInvoiceItemEntry(),
-            ),
-            (Route<dynamic> route) => false,
-          );
-        },
-      ),
-      (
-        label: 'DODAJ KLIJENTA',
-        onTap: () {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(
-              builder: (context) => const IgRouteClientInfoEntry(),
-            ),
-            (Route<dynamic> route) => false,
-          );
-        },
-      ),
-      (
-        label: 'POČETNA',
+        label: 'NAZAD',
         onTap: () {
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(
@@ -253,9 +231,31 @@ class _IgRouteDataOverviewState extends State<IgRouteDataOverview> {
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         children: [
-          Text(
-            'Podatci tvrtke',
-            style: Theme.of(context).textTheme.titleLarge,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Podatci tvrtke',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              OutlinedButton(
+                child: const Text(
+                  'UREDI',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                      builder: (context) => const IgRouteMerchantDataEntry(),
+                    ),
+                    (Route<dynamic> route) => false,
+                  );
+                },
+              ),
+            ],
           ),
           const Divider(),
           const SizedBox(height: 10),
@@ -282,9 +282,31 @@ class _IgRouteDataOverviewState extends State<IgRouteDataOverview> {
                 ),
               ),
           const SizedBox(height: 16),
-          Text(
-            'Klijenti',
-            style: Theme.of(context).textTheme.titleLarge,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Klijenti',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              OutlinedButton(
+                child: const Text(
+                  'DODAJ',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                      builder: (context) => const IgRouteClientInfoEntry(),
+                    ),
+                    (Route<dynamic> route) => false,
+                  );
+                },
+              ),
+            ],
           ),
           const Divider(),
           const SizedBox(height: 10),
@@ -343,9 +365,31 @@ class _IgRouteDataOverviewState extends State<IgRouteDataOverview> {
                 ),
               ),
           const SizedBox(height: 16),
-          Text(
-            'Proizvodi ili usluge',
-            style: Theme.of(context).textTheme.titleLarge,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Proizvodi ili usluge',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              OutlinedButton(
+                child: const Text(
+                  'DODAJ',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                      builder: (context) => const IgRouteInvoiceItemEntry(),
+                    ),
+                    (Route<dynamic> route) => false,
+                  );
+                },
+              ),
+            ],
           ),
           const Divider(),
           const SizedBox(height: 10),

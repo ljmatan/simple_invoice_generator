@@ -56,7 +56,25 @@ class IgServicePdfGenerator {
         ),
         header: (context) {
           return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text(
+                '${context.pageNumber} / ${context.pagesCount} - ' +
+                    (offerOnly ? '' : 'Račun br. ${invoice.paymentId} - ') +
+                    '${DateTime.now().day}.${DateTime.now().month}.${DateTime.now().year} '
+                        '${DateTime.now().hour}:${DateTime.now().minute} - '
+                        '${IgServiceCacheManager.merchantData?.name}, '
+                        '${IgServiceCacheManager.merchantData?.address}, '
+                        'OIB ${IgServiceCacheManager.merchantData?.oib}\n'
+                        '${IgServiceCacheManager.merchantData?.overseeingCourtBody}, '
+                        'članovi uprave: ${IgServiceCacheManager.merchantData?.boardMembers} - '
+                        'temeljni kapital društva uplaćen u cijelosti: '
+                        '${IgServiceCacheManager.merchantData?.capitalBalance.toStringAsFixed(2)} EUR',
+                style: const TextStyle(
+                  fontSize: 6,
+                ),
+              ),
+              SizedBox(height: 10),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -102,9 +120,9 @@ class IgServicePdfGenerator {
                       children: [
                         for (final clientInfoValue in <String>{
                           offerOnly ? 'PONUDA' : 'RAČUN BROJ ${invoice.paymentId}',
-                          if (invoice.clientInfo.name.isNotEmpty) invoice.clientInfo.name,
-                          if (invoice.clientInfo.oib != null) invoice.clientInfo.oib!,
-                          if (invoice.clientInfo.address != null) invoice.clientInfo.address!,
+                          if (invoice.clientInfo.name.isNotEmpty) invoice.clientInfo.name.toUpperCase(),
+                          if (invoice.clientInfo.oib != null) 'OIB ${invoice.clientInfo.oib!}',
+                          if (invoice.clientInfo.address != null) invoice.clientInfo.address!.toUpperCase(),
                         }.indexed)
                           Text(
                             clientInfoValue.$2,
@@ -181,7 +199,7 @@ class IgServicePdfGenerator {
                           padding: const EdgeInsets.all(4),
                           child: Text(
                             switch (i) {
-                              0 => invoiceItem.$2.name,
+                              0 => invoiceItem.$2.name.toUpperCase(),
                               1 => invoiceItem.$2.amount.toStringAsFixed(2),
                               2 => invoiceItem.$2.measure,
                               3 => (invoiceItem.$2.price * invoiceItem.$2.amount).toStringAsFixed(2) +
@@ -314,7 +332,7 @@ class IgServicePdfGenerator {
               ],
             ),
             for (final paymentInfo in <({String label, String value})>{
-              if (IgServiceCacheManager.merchantData?.vatApplied != true && !offerOnly)
+              if (IgServiceCacheManager.merchantData?.vatApplied != true)
                 (
                   label: 'PDV',
                   value: 'nije obračunan sukladno odredbama članka 90. stavka 2. Zakona o PDVu',
@@ -324,18 +342,21 @@ class IgServicePdfGenerator {
                 value: '${DateTime.now().day}.${DateTime.now().month}.${DateTime.now().year} '
                     '${DateTime.now().hour}:${DateTime.now().minute}',
               ),
-              (
-                label: 'Način plaćanja',
-                value: invoice.paymentMethod,
-              ),
-              (
-                label: 'Šifra namjene',
-                value: invoice.paymentId.replaceAll('/', ''),
-              ),
-              (
-                label: 'Model plaćanja',
-                value: invoice.paymentModel,
-              ),
+              if (invoice.paymentMethod.isNotEmpty)
+                (
+                  label: 'Način plaćanja',
+                  value: invoice.paymentMethod,
+                ),
+              if (!offerOnly)
+                (
+                  label: 'Šifra namjene',
+                  value: invoice.paymentId.replaceAll('/', ''),
+                ),
+              if (invoice.paymentModel.isNotEmpty)
+                (
+                  label: 'Model plaćanja',
+                  value: invoice.paymentModel,
+                ),
             })
               Padding(
                 padding: const EdgeInsets.all(4),
@@ -359,23 +380,6 @@ class IgServicePdfGenerator {
               ),
           ];
         },
-        footer: (context) {
-          return Text(
-            '${context.pageNumber} / ${context.pagesCount} - ' +
-                (offerOnly ? '' : 'Račun br. ${invoice.paymentId} - ') +
-                '${DateTime.now().day}.${DateTime.now().month}.${DateTime.now().year} '
-                    '${DateTime.now().hour}:${DateTime.now().minute} - '
-                    '${IgServiceCacheManager.merchantData?.name}, '
-                    '${IgServiceCacheManager.merchantData?.address}, '
-                    'OIB ${IgServiceCacheManager.merchantData?.oib}\n'
-                    '${IgServiceCacheManager.merchantData?.overseeingCourtBody}, '
-                    'članovi uprave: ${IgServiceCacheManager.merchantData?.boardMembers} - '
-                    'temeljni kapital društva uplaćen u cijelosti: ${IgServiceCacheManager.merchantData?.capitalBalance} EUR',
-            style: const TextStyle(
-              fontSize: 6,
-            ),
-          );
-        },
       ),
     );
     final pdfBytes = await pdf.save();
@@ -383,18 +387,20 @@ class IgServicePdfGenerator {
       fileBytes: pdfBytes,
       filenamePrefix: offerOnly ? 'Ponuda' : 'Racun',
     );
-    try {
-      IgServiceCacheManager.invoices.add(invoice);
-      await IgServiceCacheManager.instance.setStringList(
-        'invoices',
-        IgServiceCacheManager.invoices
-            .map(
-              (invoice) => jsonEncode(invoice.toJson()),
-            )
-            .toList(),
-      );
-    } catch (e) {
-      debugPrint('IgServicePdfGenerator.generatePdfInvoice: Cache failed: $e');
+    if (!offerOnly) {
+      try {
+        IgServiceCacheManager.invoices.add(invoice);
+        await IgServiceCacheManager.instance.setStringList(
+          'invoices',
+          IgServiceCacheManager.invoices
+              .map(
+                (invoice) => jsonEncode(invoice.toJson()),
+              )
+              .toList(),
+        );
+      } catch (e) {
+        debugPrint('IgServicePdfGenerator.generatePdfInvoice: Cache failed: $e');
+      }
     }
   }
 }

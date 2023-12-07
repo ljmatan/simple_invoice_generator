@@ -182,7 +182,7 @@ class _IgRouteInvoiceItemEntryState extends State<IgRouteInvoiceItemEntry> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    offset: Offset(0, 7),
+                    offset: Offset(0, -7),
                     blurRadius: 15,
                     color: Colors.black12,
                   ),

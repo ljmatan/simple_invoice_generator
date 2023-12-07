@@ -40,6 +40,13 @@ class InvoiceGenerator extends StatelessWidget {
           isDense: true,
           border: OutlineInputBorder(),
         ),
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          elevation: 0,
+          focusElevation: 0,
+          hoverElevation: 0,
+          disabledElevation: 0,
+          highlightElevation: 0,
+        ),
         appBarTheme: AppBarTheme(
           toolbarHeight: MediaQuery.of(context).size.width < 1000
               ? kToolbarHeight
